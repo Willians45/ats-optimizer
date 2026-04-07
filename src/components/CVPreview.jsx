@@ -15,8 +15,23 @@ const styles = StyleSheet.create({
   bulletText: { flex: 1 }
 });
 
-const ATSDocument = ({ data }) => {
+const ATSDocument = ({ data, language = 'es' }) => {
   if (!data) return <Document><Page size="A4" style={styles.page}></Page></Document>;
+
+  const labels = {
+    es: {
+      profile: "Perfil Profesional",
+      experience: "Experiencia Profesional",
+      education: "Educación",
+      skills: "Habilidades Técnicas"
+    },
+    en: {
+      profile: "Professional Summary",
+      experience: "Professional Experience",
+      education: "Education",
+      skills: "Technical Skills"
+    }
+  }[language];
 
   return (
     <Document>
@@ -28,14 +43,14 @@ const ATSDocument = ({ data }) => {
 
         {data.perfilProfesional && (
           <View style={styles.section}>
-            <Text style={styles.heading}>Perfil Profesional</Text>
+            <Text style={styles.heading}>{labels.profile}</Text>
             <Text>{data.perfilProfesional}</Text>
           </View>
         )}
 
         {data.experiencia && data.experiencia.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.heading}>Experiencia Profesional</Text>
+            <Text style={styles.heading}>{labels.experience}</Text>
             {data.experiencia.map((exp, i) => (
               <View key={i} style={{ marginBottom: 10 }}>
                 <View style={styles.jobHeader}>
@@ -56,7 +71,7 @@ const ATSDocument = ({ data }) => {
 
         {data.educacion && data.educacion.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.heading}>Educación</Text>
+            <Text style={styles.heading}>{labels.education}</Text>
             {data.educacion.map((edu, i) => (
               <View key={i} style={styles.jobHeader}>
                 <Text><Text style={styles.boldText}>{edu.titulo}</Text>, {edu.institucion}</Text>
@@ -68,7 +83,7 @@ const ATSDocument = ({ data }) => {
 
         {data.habilidades && data.habilidades.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.heading}>Habilidades Técnicas</Text>
+            <Text style={styles.heading}>{labels.skills}</Text>
             <Text>{data.habilidades.join(' • ')}</Text>
           </View>
         )}
@@ -78,7 +93,7 @@ const ATSDocument = ({ data }) => {
 };
 
 export default function CVPreview() {
-  const { optimizedData } = useCvContext();
+  const { optimizedData, language } = useCvContext();
   const [debouncedData] = useDebounce(optimizedData, 1000);
 
   if (!debouncedData) {
@@ -92,7 +107,7 @@ export default function CVPreview() {
   return (
     <div className="w-full h-full bg-slate-300">
       <PDFViewer width="100%" height="100%" showToolbar={true} className="border-none">
-        <ATSDocument data={debouncedData} />
+        <ATSDocument data={debouncedData} language={language} />
       </PDFViewer>
     </div>
   );
