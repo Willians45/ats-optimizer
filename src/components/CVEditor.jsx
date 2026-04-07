@@ -66,7 +66,7 @@ export default function CVEditor() {
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full text-sm">
+    <div className="flex flex-col gap-6 w-full text-sm pb-20">
       <section className="bg-slate-800 p-4 border border-slate-700 rounded-lg">
         <h3 className="text-slate-200 font-semibold mb-3">{labels.personal}</h3>
         <div className="flex flex-col gap-3">

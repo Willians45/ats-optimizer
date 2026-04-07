@@ -57,7 +57,7 @@ export default function Editor() {
         </button>
       </div>
 
-      <div className="flex-1 p-4 overflow-y-auto">
+      <div className="flex-1 p-4 overflow-y-auto min-h-0">
         {activeTab === 'input' ? (
           <div className="flex flex-col gap-4 h-full">
             <FileUploader />

@@ -10,7 +10,7 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen w-full bg-slate-900 overflow-hidden text-slate-200">
       <Sidebar onOpenSettings={() => setIsSettingsOpen(true)} />
-      <main className="flex-1 grid grid-cols-2">
+      <main className="flex-1 grid grid-cols-2 h-full overflow-hidden">
         <Editor />
         <Preview />
       </main>
