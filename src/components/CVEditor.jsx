@@ -1,3 +1,5 @@
+import { useCvContext } from '../context/CvContext';
+
 export default function CVEditor() {
   const { optimizedData, setOptimizedData, language } = useCvContext();
 
