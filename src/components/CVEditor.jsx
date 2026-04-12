@@ -20,6 +20,7 @@ export default function CVEditor() {
       skills: "Habilidades",
       placeholders: {
         name: "Nombre completo",
+        profession: "Profesión / Puesto (ej. Desarrollador Frontend)",
         contact: "Ej. email@... | Tel...",
         cargo: "Cargo",
         empresa: "Empresa",
@@ -38,6 +39,7 @@ export default function CVEditor() {
       skills: "Skills",
       placeholders: {
         name: "Full Name",
+        profession: "Profession / Role (e.g. Frontend Developer)",
         contact: "e.g. email@... | Tel...",
         cargo: "Job Title",
         empresa: "Company",
@@ -71,6 +73,7 @@ export default function CVEditor() {
         <h3 className="text-slate-200 font-semibold mb-3">{labels.personal}</h3>
         <div className="flex flex-col gap-3">
           <input className="bg-slate-900 border border-slate-700 px-3 py-2 rounded-md text-white focus:outline-none focus:border-blue-500" value={optimizedData.datosPersonales?.nombre || ""} onChange={e => handleChange('datosPersonales', 'nombre', e.target.value)} placeholder={labels.placeholders.name} />
+          <input className="bg-slate-900 border border-slate-700 px-3 py-2 rounded-md text-white focus:outline-none focus:border-blue-500" value={optimizedData.datosPersonales?.profesion || ""} onChange={e => handleChange('datosPersonales', 'profesion', e.target.value)} placeholder={labels.placeholders.profession} />
           <input className="bg-slate-900 border border-slate-700 px-3 py-2 rounded-md text-white focus:outline-none focus:border-blue-500" value={optimizedData.datosPersonales?.contacto || ""} onChange={e => handleChange('datosPersonales', 'contacto', e.target.value)} placeholder={labels.placeholders.contact} />
         </div>
       </section>

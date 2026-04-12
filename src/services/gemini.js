@@ -52,6 +52,7 @@ Devuelve ÚNICAMENTE un JSON válido siguiendo este esquema:
 {
   "datosPersonales": {
     "nombre": "Nombre Real del CV",
+    "profesion": "Título del puesto al que aspira o profesión actual (ej: Frontend Developer, Project Manager)",
     "contacto": "Email / Tel del CV"
   },
   "perfilProfesional": "Resumen ejecutivo potente de 3-4 líneas. Si hay oferta, inyecta keywords de la vacante. Si no, hazlo general del sector.",

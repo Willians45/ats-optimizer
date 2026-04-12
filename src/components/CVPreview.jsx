@@ -5,7 +5,8 @@ import { useCvContext } from '../context/CvContext';
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 11, lineHeight: 1.4, color: '#000000' },
   section: { marginBottom: 16 },
-  title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 4 },
+  title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 2 },
+  profession: { fontSize: 14, fontWeight: 'bold', textAlign: 'center', color: '#334155', marginBottom: 4, textTransform: 'uppercase' },
   contact: { fontSize: 10, textAlign: 'center', marginBottom: 20 },
   heading: { fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', borderBottomWidth: 1, borderBottomColor: '#000000', paddingBottom: 2, marginBottom: 8 },
   jobHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
@@ -38,6 +39,9 @@ const ATSDocument = ({ data, language = 'es' }) => {
       <Page size="A4" style={styles.page}>
         <View>
           <Text style={styles.title}>{data.datosPersonales?.nombre || ''}</Text>
+          {data.datosPersonales?.profesion && (
+            <Text style={styles.profession}>{data.datosPersonales.profesion}</Text>
+          )}
           <Text style={styles.contact}>{data.datosPersonales?.contacto || ''}</Text>
         </View>
 
