@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import Button from '../ui/Button';
 import Select from '../ui/Select';
-import { ALLOWED_MODELS, DEFAULT_MODEL, MODEL_LABELS } from '../../../shared/cvSchema.js';
+import { ALLOWED_MODELS, DEFAULT_MODEL, MODEL_SHORT_LABELS } from '../../../shared/cvSchema.js';
 import { useCvContext } from '../../context/CvContext';
 import { useApiStatus } from '../../hooks/useApiStatus';
 import { useGenerateCv } from '../../hooks/useGenerateCv';
@@ -40,8 +40,15 @@ const inputClass =
 export default function AiPanel() {
   const { context, updateContext, optimizedData } = useCvContext();
   const api = useApiStatus();
-  const { generate, loading, error } = useGenerateCv();
+  const { generate, loading, error, errorCode } = useGenerateCv();
   const [model, setModel] = useState(() => getPreferredModel() || DEFAULT_MODEL);
+
+  const allowedModels = api.allowedModels?.length ? api.allowedModels : ALLOWED_MODELS;
+  const selectedModel = allowedModels.includes(model)
+    ? model
+    : allowedModels.includes(DEFAULT_MODEL)
+      ? DEFAULT_MODEL
+      : allowedModels[0];
 
   const suggestions = optimizedData?.meta?.sugerencias || [];
   const ready = api.configured || api.hasUserKey;
@@ -69,23 +76,23 @@ export default function AiPanel() {
         </div>
         {!ready && !api.loading ? (
           <p className="mt-2 text-[10.5px] leading-relaxed text-[#A16207]">
-            Configura la API key en Ajustes para usar el asistente.
+            Sin API KEY configurada.
           </p>
         ) : null}
       </div>
 
       <Field label="Modelo" hint="El modelo debe estar disponible en tu cuenta de Gemini.">
         <Select
-          value={model}
+          value={selectedModel}
           onChange={(event) => {
             setModel(event.target.value);
             setPreferredModel(event.target.value);
           }}
           className="h-9 rounded-lg text-[12px]"
         >
-          {(api.allowedModels?.length ? api.allowedModels : ALLOWED_MODELS).map((id) => (
+          {allowedModels.map((id) => (
             <option key={id} value={id}>
-              {MODEL_LABELS[id] || id}
+              {MODEL_SHORT_LABELS[id] || id}
             </option>
           ))}
         </Select>
@@ -170,6 +177,11 @@ export default function AiPanel() {
       {error ? (
         <div className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-2.5 py-2 text-[11px] leading-relaxed text-[#B91C1C]">
           {error}
+          {errorCode === 'MODEL_OVERLOADED' ? (
+            <p className="mt-1 font-semibold">
+              Selecciona otro modelo en el desplegable de arriba y vuelve a intentarlo.
+            </p>
+          ) : null}
         </div>
       ) : null}
 

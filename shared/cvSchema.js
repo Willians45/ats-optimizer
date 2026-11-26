@@ -168,3 +168,11 @@ export const MODEL_LABELS = {
   'gemini-4-hydrogen': 'Gemini 4 Hydrogen (máxima calidad)',
   'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite (económico)',
 };
+
+// Etiquetas cortas para los desplegables: en móvil las etiquetas largas se
+// cortan dentro del select y no se puede leer el modelo completo.
+export const MODEL_SHORT_LABELS = {
+  'gemini-3.8-flash': 'Gemini 3.8 Flash',
+  'gemini-4-hydrogen': 'Gemini 4 Hydrogen',
+  'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite',
+};

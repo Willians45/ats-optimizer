@@ -17,7 +17,7 @@ import { getTemplate } from '../../theme/templates';
 
 const PAGE_WIDTH = 794;
 const PAGE_HEIGHT = 1123;
-const MIN_ZOOM = 0.4;
+const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 1.6;
 
 function EmptyCanvas({ onOpenPanel }) {
@@ -70,16 +70,18 @@ function clampZoom(value) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(value.toFixed(2))));
 }
 
-function initialZoom() {
-  if (typeof window === 'undefined') return 0.82;
-  const panels = 76 + 340 + (window.innerWidth >= 1024 ? 320 : 0);
-  const available = window.innerWidth - panels - 96;
-  return clampZoom(available / PAGE_WIDTH);
+function estimateZoom() {
+  if (typeof window === 'undefined') return 0.8;
+  const width = window.innerWidth;
+  const panels = width >= 1280 ? 76 + 340 + 320 : width >= 1024 ? 76 + 340 : 0;
+  const gutter = width < 640 ? 20 : 72;
+  return clampZoom(Math.min((width - panels - gutter) / PAGE_WIDTH, 1));
 }
 
 export default function CanvasWorkspace({ onOpenPanel }) {
   const { optimizedData, template, accent, language } = useCvContext();
-  const [zoom, setZoom] = useState(initialZoom);
+  const [zoom, setZoom] = useState(estimateZoom);
+  const [autoFit, setAutoFit] = useState(true);
   const [pageHeight, setPageHeight] = useState(PAGE_HEIGHT);
   const pageRef = useRef(null);
   const viewportRef = useRef(null);
@@ -95,34 +97,66 @@ export default function CanvasWorkspace({ onOpenPanel }) {
     return () => observer.disconnect();
   }, [optimizedData, template, language, accent]);
 
-  const zoomBy = (delta) => setZoom((current) => clampZoom(current + delta));
-
-  const fit = useCallback(() => {
-    const width = viewportRef.current?.clientWidth || PAGE_WIDTH;
-    const next = Math.min((width - 96) / PAGE_WIDTH, 1);
-    setZoom(clampZoom(next));
+  const fitToWidth = useCallback(() => {
+    const width = viewportRef.current?.clientWidth;
+    if (!width) return;
+    const gutter = width < 640 ? 20 : 72;
+    setZoom(clampZoom(Math.min((width - gutter) / PAGE_WIDTH, 1)));
   }, []);
+
+  // Ajusta la hoja al ancho real disponible (móvil incluido) y reacciona a
+  // cambios de orientación o al abrir/cerrar paneles. El ResizeObserver
+  // también dispara el primer ajuste al observar el contenedor.
+  useEffect(() => {
+    const node = viewportRef.current;
+    if (!node) return undefined;
+    const onResize = () => {
+      if (autoFit) fitToWidth();
+    };
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', onResize);
+      return () => window.removeEventListener('resize', onResize);
+    }
+
+    const observer = new ResizeObserver(onResize);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [autoFit, fitToWidth]);
+
+  const zoomBy = (delta) => {
+    setAutoFit(false);
+    setZoom((current) => clampZoom(current + delta));
+  };
+
+  const fit = () => {
+    setAutoFit(true);
+    fitToWidth();
+  };
 
   return (
     <main className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-[#ECECEE]">
-      <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-[#E1E2E6] bg-white/80 px-3 backdrop-blur">
+      <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-[#E1E2E6] bg-white/80 px-2 backdrop-blur sm:px-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-2.5 py-1 text-[10.5px] font-bold text-[#374151]">
-            <FileText size={11} className="text-[#7D2AE8]" />
-            {t.name}
+          <span className="inline-flex max-w-[45vw] items-center gap-1.5 truncate rounded-full border border-[#E5E7EB] bg-white px-2.5 py-1 text-[10.5px] font-bold text-[#374151]">
+            <FileText size={11} className="shrink-0 text-[#7D2AE8]" />
+            <span className="truncate">{t.name}</span>
           </span>
           <span className="hidden text-[10px] font-semibold uppercase tracking-[0.1em] text-[#9CA3AF] sm:inline">
             A4 · 1 columna
           </span>
         </div>
 
-        <div className="flex items-center gap-0.5 rounded-lg border border-[#E5E7EB] bg-white px-1 py-0.5 shadow-sm">
+        <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-[#E5E7EB] bg-white px-1 py-0.5 shadow-sm">
           <IconButton label="Alejar" size="sm" onClick={() => zoomBy(-0.08)} disabled={zoom <= MIN_ZOOM}>
             <Minus size={13} />
           </IconButton>
           <button
             type="button"
-            onClick={() => setZoom(1)}
+            onClick={() => {
+              setAutoFit(false);
+              setZoom(1);
+            }}
             title="Zoom al 100%"
             className="min-w-[42px] rounded-md px-1 text-[11px] font-bold text-[#374151] hover:text-[#6B21D6]"
           >
@@ -138,9 +172,9 @@ export default function CanvasWorkspace({ onOpenPanel }) {
         </div>
       </div>
 
-      <div ref={viewportRef} className="canvas-grid canva-scroll relative flex-1 overflow-auto">
+      <div ref={viewportRef} className="canvas-grid canva-scroll relative flex-1 overflow-auto overscroll-contain">
         {optimizedData ? (
-          <div className="min-h-full w-full px-8 py-10">
+          <div className="min-h-full w-full px-2 py-4 sm:px-8 sm:py-10">
             <div
               className="relative mx-auto shrink-0"
               style={{ width: PAGE_WIDTH * zoom, height: pageHeight * zoom }}
@@ -163,7 +197,7 @@ export default function CanvasWorkspace({ onOpenPanel }) {
       </div>
 
       {optimizedData ? (
-        <div className="pointer-events-none absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-[#0E1318]/75 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur">
+        <div className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-full bg-[#0E1318]/75 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur sm:bottom-3 sm:left-3">
           Página 1 · A4
         </div>
       ) : null}

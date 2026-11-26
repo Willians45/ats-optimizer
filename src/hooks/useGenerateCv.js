@@ -21,6 +21,7 @@ export function useGenerateCv() {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
 
   const generate = useCallback(async () => {
     if (!cvText || cvText.trim().length < 30) {
@@ -35,6 +36,7 @@ export function useGenerateCv() {
 
     setLoading(true);
     setError('');
+    setErrorCode('');
 
     try {
       const result = await generateCv({
@@ -57,6 +59,7 @@ export function useGenerateCv() {
       const message =
         err?.message || 'No se pudo generar el CV. Revisa tu conexión e inténtalo de nuevo.';
       setError(message);
+      setErrorCode(err?.code || '');
       toast.error(message);
       return false;
     } finally {
@@ -64,5 +67,5 @@ export function useGenerateCv() {
     }
   }, [cvText, jobDescription, jobImage, context, setOptimizedData, toast]);
 
-  return { generate, loading, error };
+  return { generate, loading, error, errorCode };
 }

@@ -21,6 +21,8 @@ export default function DownloadButton({
   size = 'md',
   className,
   label = 'Descargar PDF',
+  compactLabel = 'PDF',
+  title,
 }) {
   const { optimizedData, template, accent, language } = useCvContext();
   const [loading, setLoading] = useState(false);
@@ -69,9 +71,11 @@ export default function DownloadButton({
       className={className}
       onClick={handleDownload}
       disabled={loading || !optimizedData}
+      title={title || label}
     >
       {loading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-      {loading ? 'Generando…' : label}
+      <span className="hidden sm:inline">{loading ? 'Generando…' : label}</span>
+      <span className="sm:hidden">{loading ? '…' : compactLabel}</span>
     </Button>
   );
 }

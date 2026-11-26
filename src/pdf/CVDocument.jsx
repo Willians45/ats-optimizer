@@ -35,6 +35,13 @@ export default function CVDocument({
     personal.portafolio,
   ].filter(hasText);
 
+  // @react-pdf resuelve `lineHeight` como multiplicador del tamaño de fuente
+  // solo en el estilo que lo define. La página fija el interlineado del cuerpo
+  // y cada texto con otro tamaño debe declarar el suyo; si lo heredan, reciben
+  // una altura absoluta pensada para el cuerpo y las líneas se solapan.
+  const smallFontSize = s.bodySize - 0.5;
+  const tinyFontSize = s.bodySize - 0.7;
+
   const styles = StyleSheet.create({
     page: {
       padding: s.padding,
@@ -48,13 +55,15 @@ export default function CVDocument({
     },
     name: {
       fontSize: s.nameSize,
+      lineHeight: 1.12,
       fontWeight: 'bold',
       color: a.value,
       letterSpacing: -0.3,
-      marginBottom: 3,
+      marginBottom: 2,
     },
     headline: {
       fontSize: s.headlineSize,
+      lineHeight: 1.35,
       fontWeight: 'bold',
       color: '#374151',
       textTransform: 'uppercase',
@@ -62,7 +71,8 @@ export default function CVDocument({
       marginBottom: 7,
     },
     contact: {
-      fontSize: s.bodySize - 0.5,
+      fontSize: smallFontSize,
+      lineHeight: 1.4,
       color: '#4B5563',
     },
     section: {
@@ -70,6 +80,7 @@ export default function CVDocument({
     },
     heading: {
       fontSize: s.headingSize,
+      lineHeight: 1.3,
       fontWeight: 'bold',
       color: s.headingStyle === 'accent' ? a.value : '#111827',
       textTransform: s.uppercaseHeadings ? 'uppercase' : 'none',
@@ -107,7 +118,8 @@ export default function CVDocument({
     },
     entryDate: {
       color: '#4B5563',
-      fontSize: s.bodySize - 0.5,
+      fontSize: smallFontSize,
+      lineHeight: 1.4,
       textAlign: 'right',
     },
     entrySub: {
@@ -140,7 +152,8 @@ export default function CVDocument({
       marginBottom: 2,
     },
     small: {
-      fontSize: s.bodySize - 0.7,
+      fontSize: tinyFontSize,
+      lineHeight: 1.4,
       color: '#4B5563',
     },
   });

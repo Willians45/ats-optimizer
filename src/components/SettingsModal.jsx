@@ -10,7 +10,6 @@ import {
   RefreshCw,
   Save,
   Server,
-  ShieldCheck,
   Trash2,
 } from 'lucide-react';
 import Modal from './ui/Modal';
@@ -26,7 +25,7 @@ import {
   setPreferredModel,
   setUserApiKey,
 } from '../utils/storage';
-import { ALLOWED_MODELS, DEFAULT_MODEL, MODEL_LABELS } from '../../shared/cvSchema.js';
+import { ALLOWED_MODELS, DEFAULT_MODEL, MODEL_SHORT_LABELS } from '../../shared/cvSchema.js';
 import { cn } from '../utils/cn';
 
 export default function SettingsModal({ isOpen, onClose }) {
@@ -68,6 +67,17 @@ export default function SettingsModal({ isOpen, onClose }) {
     loadStatus();
   }, [isOpen, loadStatus]);
 
+  useEffect(() => {
+    const allowed = status.data?.allowedModels?.length
+      ? status.data.allowedModels
+      : ALLOWED_MODELS;
+    setModel((current) => {
+      if (allowed.includes(current)) return current;
+      if (allowed.includes(DEFAULT_MODEL)) return DEFAULT_MODEL;
+      return allowed[0] || DEFAULT_MODEL;
+    });
+  }, [status.data]);
+
   const handleTest = async () => {
     setTesting(true);
     setResult(null);
@@ -85,6 +95,7 @@ export default function SettingsModal({ isOpen, onClose }) {
 
   const handleSave = () => {
     const clean = apiKey.trim();
+    const hadKey = Boolean(getUserApiKey());
     setSaving(true);
     if (clean) {
       const saved = setUserApiKey(clean);
@@ -93,13 +104,17 @@ export default function SettingsModal({ isOpen, onClose }) {
         toast.error('No se pudo guardar la key en este navegador.');
         return;
       }
+    } else if (hadKey) {
+      clearUserApiKey();
     }
     setPreferredModel(model);
     setSaving(false);
     toast.success(
       clean
-        ? 'Ajustes guardados. La key solo vive en este navegador.'
-        : 'Preferencias guardadas.',
+        ? 'Ajustes guardados.'
+        : hadKey
+          ? 'API key eliminada de este navegador.'
+          : 'Preferencias guardadas.',
     );
     loadStatus();
     onClose?.();
@@ -123,18 +138,23 @@ export default function SettingsModal({ isOpen, onClose }) {
       open={isOpen}
       onClose={onClose}
       title="Ajustes"
-      description="Configura la conexión con Gemini. Tu key nunca se incluye en el bundle público."
+      description="Configura el modelo y el acceso a Gemini."
       size="lg"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose} className="w-full sm:w-auto">
             Cerrar
           </Button>
-          <Button variant="secondary" onClick={handleTest} disabled={testing}>
+          <Button
+            variant="secondary"
+            onClick={handleTest}
+            disabled={testing}
+            className="w-full sm:w-auto"
+          >
             {testing ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
             {testing ? 'Probando…' : 'Probar conexión'}
           </Button>
-          <Button variant="gradient" onClick={handleSave} disabled={saving}>
+          <Button variant="gradient" onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
             <Save size={15} /> Guardar
           </Button>
         </>
@@ -163,29 +183,31 @@ export default function SettingsModal({ isOpen, onClose }) {
               )}
             >
               {status.loading
-                ? 'Comprobando el servidor…'
+                ? 'Comprobando el servicio…'
                 : serverReady
-                  ? 'Servidor configurado'
+                  ? 'Servicio configurado'
                   : usingByok
                     ? 'Usando tu API key (BYOK)'
-                    : 'Sin API key configurada'}
+                    : 'Sin API KEY configurada'}
             </p>
-            <p
-              className={cn(
-                'mt-0.5 text-[11px] leading-relaxed',
-                ready ? 'text-[#15803D]' : 'text-[#B91C1C]',
-              )}
-            >
-              {status.loading
-                ? 'Consultando /api/gemini.'
-                : serverReady
-                  ? `La variable GEMINI_API_KEY está definida en el servidor. Modelo: ${
-                      status.data?.defaultModel || DEFAULT_MODEL
-                    }.`
-                  : usingByok
-                    ? `Key guardada en este navegador: ${maskApiKey(storedKey)}.`
-                    : 'Añade GEMINI_API_KEY en Vercel o pega tu key abajo (se guarda solo en este navegador).'}
-            </p>
+            {status.loading ? (
+              <p
+                className={cn(
+                  'mt-0.5 text-[11px] leading-relaxed',
+                  ready ? 'text-[#15803D]' : 'text-[#B91C1C]',
+                )}
+              >
+                Consultando el estado del servicio.
+              </p>
+            ) : serverReady ? (
+              <p className="mt-0.5 text-[11px] leading-relaxed text-[#15803D]">
+                Modelo: {status.data?.defaultModel || DEFAULT_MODEL}.
+              </p>
+            ) : usingByok ? (
+              <p className="mt-0.5 text-[11px] leading-relaxed text-[#15803D]">
+                Key guardada en este navegador: {maskApiKey(storedKey)}.
+              </p>
+            ) : null}
             {status.error ? (
               <p className="mt-1 flex items-center gap-1 text-[10.5px] text-[#B45309]">
                 <AlertCircle size={11} /> {status.error}
@@ -242,8 +264,7 @@ export default function SettingsModal({ isOpen, onClose }) {
             </div>
           </div>
           <p className="mt-1 text-[10.5px] leading-relaxed text-[#9CA3AF]">
-            Se guarda en <code className="font-mono">localStorage</code> de este navegador y se
-            envía únicamente a tu proxy <code className="font-mono">/api/gemini</code>.
+            Se guarda solo en este navegador.
           </p>
         </div>
 
@@ -258,12 +279,13 @@ export default function SettingsModal({ isOpen, onClose }) {
           >
             {models.map((id) => (
               <option key={id} value={id}>
-                {MODEL_LABELS[id] || id}
+                {MODEL_SHORT_LABELS[id] || id}
               </option>
             ))}
           </Select>
           <p className="mt-1 text-[10.5px] leading-relaxed text-[#9CA3AF]">
-            El modelo se guarda en este navegador. El servidor valida que esté permitido.
+            Recomendado: {MODEL_SHORT_LABELS[DEFAULT_MODEL] || DEFAULT_MODEL}. El servidor valida
+            que esté permitido.
           </p>
         </div>
 
@@ -284,16 +306,6 @@ export default function SettingsModal({ isOpen, onClose }) {
             {result.message}
           </div>
         ) : null}
-
-        <div className="flex items-start gap-2 rounded-xl bg-[#F8FAFC] px-3 py-2.5">
-          <ShieldCheck size={15} className="mt-0.5 shrink-0 text-[#0F766E]" />
-          <p className="text-[10.5px] leading-relaxed text-[#475569]">
-            <strong className="text-[#0F172A]">Producción:</strong> define{' '}
-            <code className="font-mono">GEMINI_API_KEY</code> en Vercel (nunca con prefijo{' '}
-            <code className="font-mono">VITE_</code>). La clave del servidor no se expone al
-            navegador y el proxy aplica rate limit por IP.
-          </p>
-        </div>
       </div>
     </Modal>
   );

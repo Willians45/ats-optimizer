@@ -4,6 +4,7 @@ import {
   ALLOWED_MODELS,
   CV_JSON_SCHEMA,
   DEFAULT_MODEL,
+  MODEL_LABELS,
 } from '../shared/cvSchema.js';
 import { buildCvPrompt } from './prompts/cvOptimizer.js';
 import { normalizeServerCv } from './cvNormalize.js';
@@ -126,7 +127,24 @@ function sanitizeMessage(message) {
   return text.length > 400 ? `${text.slice(0, 400)}…` : text;
 }
 
-function mapError(error) {
+function shortModelLabel(id) {
+  return (MODEL_LABELS[id] || id || '').replace(/\s*\([^)]*\)\s*$/, '');
+}
+
+function modelAlternatives(model) {
+  return ALLOWED_MODELS.filter((id) => id !== model).map((id) => shortModelLabel(id));
+}
+
+function saturatedMessage(model) {
+  const current = shortModelLabel(model) || 'El modelo seleccionado';
+  const alternatives = modelAlternatives(model);
+  const recommendation = alternatives.length
+    ? ` Cambia a otro modelo (${alternatives.join(' o ')}) en Ajustes o en el Asistente IA e inténtalo de nuevo.`
+    : ' Inténtalo de nuevo en unos segundos.';
+  return `${current} está saturado en este momento.${recommendation}`;
+}
+
+function mapError(error, { model = '' } = {}) {
   const status = Number(error?.status || error?.code || 0);
   const raw = sanitizeMessage(error?.message || error);
 
@@ -173,6 +191,25 @@ function mapError(error) {
         error: {
           code: 'MODEL_NOT_FOUND',
           message: 'El modelo seleccionado no está disponible. Prueba con Gemini 3.8 Flash.',
+          detail: raw,
+        },
+      },
+    };
+  }
+  if (
+    status === 503 ||
+    /overloaded|over capacity|high demand|temporarily unavailable|service unavailable|UNAVAILABLE/i.test(
+      raw,
+    )
+  ) {
+    return {
+      status: 503,
+      body: {
+        error: {
+          code: 'MODEL_OVERLOADED',
+          message: saturatedMessage(model),
+          model,
+          alternatives: modelAlternatives(model),
           detail: raw,
         },
       },
@@ -309,16 +346,17 @@ export async function handleGeminiRequest({
       return json(400, {
         error: {
           code: 'NO_API_KEY',
-          message: 'No hay API key configurada. Pega tu key de Gemini en Ajustes.',
+          message: 'Sin API KEY configurada.',
         },
       });
     }
 
+    const testedModel = resolveModel(parsed.data.model);
     try {
       await testApiKey(key);
-      return json(200, { ok: true, model: resolveModel(parsed.data.model) });
+      return json(200, { ok: true, model: testedModel });
     } catch (error) {
-      return mapError(error);
+      return mapError(error, { model: testedModel });
     }
   }
 
@@ -338,8 +376,7 @@ export async function handleGeminiRequest({
     return json(400, {
       error: {
         code: 'NO_API_KEY',
-        message:
-          'No hay API key configurada. Añade GEMINI_API_KEY en el servidor o pega tu propia key en Ajustes.',
+        message: 'Sin API KEY configurada.',
       },
     });
   }
@@ -401,6 +438,6 @@ export async function handleGeminiRequest({
       usage: response.usageMetadata || null,
     });
   } catch (error) {
-    return mapError(error);
+    return mapError(error, { model });
   }
 }

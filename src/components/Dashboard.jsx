@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import TopBar from './layout/TopBar';
 import LeftRail from './layout/LeftRail';
 import LeftPanel from './layout/LeftPanel';
+import MobileTabBar from './layout/MobileTabBar';
 import CanvasWorkspace from './layout/CanvasWorkspace';
 import RightPanel from './layout/RightPanel';
 import SettingsModal from './SettingsModal';
@@ -12,6 +13,14 @@ export default function Dashboard() {
   const [activePanel, setActivePanel] = useState('content');
   const [rightOpen, setRightOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+
+  const openPanel = useCallback((panel) => {
+    setActivePanel(panel);
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+      setMobilePanelOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -41,32 +50,36 @@ export default function Dashboard() {
   }, [undo, redo]);
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-[#F6F6F7] text-[#0E1318]">
+    <div className="app-shell flex w-full flex-col overflow-hidden bg-[#F6F6F7] text-[#0E1318]">
       <TopBar
         onOpenSettings={() => setSettingsOpen(true)}
         rightOpen={rightOpen}
         onToggleRight={() => setRightOpen((value) => !value)}
-        onOpenPanel={setActivePanel}
+        onOpenPanel={openPanel}
       />
 
       <div className="flex min-h-0 flex-1">
         <LeftRail
           activePanel={activePanel}
-          onChange={setActivePanel}
+          onChange={openPanel}
           onOpenSettings={() => setSettingsOpen(true)}
         />
         <LeftPanel
           activePanel={activePanel}
           onOpenSettings={() => setSettingsOpen(true)}
-          onOpenPanel={setActivePanel}
+          onOpenPanel={openPanel}
+          open={mobilePanelOpen}
+          onClose={() => setMobilePanelOpen(false)}
         />
-        <CanvasWorkspace onOpenPanel={setActivePanel} />
+        <CanvasWorkspace onOpenPanel={openPanel} />
         <RightPanel
           open={rightOpen}
           onClose={() => setRightOpen(false)}
-          onOpenPanel={setActivePanel}
+          onOpenPanel={openPanel}
         />
       </div>
+
+      <MobileTabBar activePanel={activePanel} onSelect={openPanel} />
 
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>

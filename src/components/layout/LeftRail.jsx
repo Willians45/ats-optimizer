@@ -10,7 +10,7 @@ const ITEMS = [
 
 export default function LeftRail({ activePanel, onChange, onOpenSettings }) {
   return (
-    <nav className="flex w-[76px] shrink-0 flex-col items-center border-r border-[#E9EAEE] bg-white py-3">
+    <nav className="hidden w-[76px] shrink-0 flex-col items-center border-r border-[#E9EAEE] bg-white py-3 lg:flex">
       <div className="flex flex-1 flex-col items-center gap-1">
         {ITEMS.map((item) => {
           const Icon = item.icon;

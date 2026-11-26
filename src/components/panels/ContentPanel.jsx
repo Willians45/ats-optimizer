@@ -16,7 +16,6 @@ import { useCvContext } from '../../context/CvContext';
 import { useApiStatus } from '../../hooks/useApiStatus';
 import { useGenerateCv } from '../../hooks/useGenerateCv';
 import { useToast } from '../ui/Toast';
-import { extractTextFromPDF } from '../../utils/pdfExtractor';
 
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -70,6 +69,9 @@ export default function ContentPanel({ onOpenSettings, onOpenPanel }) {
     setExtracting(true);
     try {
       const buffer = await file.arrayBuffer();
+      // Carga diferida: PDF.js pesa bastante y no debe bloquear el arranque
+      // de la app en móvil.
+      const { extractTextFromPDF } = await import('../../utils/pdfExtractor');
       const text = await extractTextFromPDF(buffer);
       setCvText(text);
       toast.success(`CV leído: ${text.length.toLocaleString('es')} caracteres.`);
@@ -116,11 +118,7 @@ export default function ContentPanel({ onOpenSettings, onOpenPanel }) {
           <div className="flex items-start gap-2">
             <AlertTriangle size={15} className="mt-0.5 shrink-0 text-[#B45309]" />
             <div>
-              <p className="text-[12px] font-semibold text-[#92400E]">Falta la API key</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-[#A16207]">
-                El servidor no tiene <code className="font-mono">GEMINI_API_KEY</code>. Puedes
-                añadir tu propia key en Ajustes para usar la IA.
-              </p>
+              <p className="text-[12px] font-semibold text-[#92400E]">Sin API KEY configurada</p>
               <button
                 type="button"
                 onClick={onOpenSettings}

@@ -43,9 +43,9 @@ export default function TopBar({ onOpenSettings, rightOpen, onToggleRight, onOpe
     'Sin cargo objetivo todavía';
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-[#E9EAEE] bg-white px-3">
+    <header className="flex h-14 shrink-0 items-center gap-1.5 border-b border-[#E9EAEE] bg-white px-2 sm:gap-2 sm:px-3">
       <div className="flex items-center gap-2.5 pl-0.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-[10px] brand-gradient text-white shadow-[0_6px_16px_-6px_rgba(125,42,232,0.9)]">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] brand-gradient text-white shadow-[0_6px_16px_-6px_rgba(125,42,232,0.9)]">
           <Sparkles size={16} strokeWidth={2.2} />
         </span>
         <div className="hidden leading-none sm:block">
@@ -63,7 +63,7 @@ export default function TopBar({ onOpenSettings, rightOpen, onToggleRight, onOpe
         <p className="truncate text-[10.5px] text-[#9CA3AF]">{headline}</p>
       </div>
 
-      <div className="flex items-center gap-0.5">
+      <div className="hidden items-center gap-0.5 sm:flex">
         <IconButton label="Deshacer (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
           <Undo2 size={16} />
         </IconButton>
@@ -92,25 +92,26 @@ export default function TopBar({ onOpenSettings, rightOpen, onToggleRight, onOpe
           onClick={() => onOpenPanel('ats')}
           title="Abrir análisis ATS"
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold transition hover:brightness-[0.98]',
+            'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-extrabold transition hover:brightness-[0.98] sm:px-2.5',
             scoreTone(analysis.score),
           )}
         >
-          <span className="text-[9px] font-bold uppercase tracking-[0.08em] opacity-70">ATS</span>
+          <span className="hidden text-[9px] font-bold uppercase tracking-[0.08em] opacity-70 sm:inline">ATS</span>
           {analysis.score}
         </button>
       ) : null}
 
-      <IconButton
-        label={rightOpen ? 'Ocultar inspector' : 'Mostrar inspector'}
-        onClick={onToggleRight}
-        active={rightOpen}
-        className="hidden lg:inline-flex"
-      >
-        <PanelRight size={16} />
-      </IconButton>
+      <div className="hidden shrink-0 xl:flex">
+        <IconButton
+          label={rightOpen ? 'Ocultar inspector' : 'Mostrar inspector'}
+          onClick={onToggleRight}
+          active={rightOpen}
+        >
+          <PanelRight size={16} />
+        </IconButton>
+      </div>
 
-      <DownloadButton size="sm" label="Descargar" />
+      <DownloadButton size="sm" label="Descargar" compactLabel="PDF" title="Descargar PDF" />
 
       <IconButton label="Ajustes" onClick={onOpenSettings}>
         <Settings size={16} />
@@ -118,7 +119,7 @@ export default function TopBar({ onOpenSettings, rightOpen, onToggleRight, onOpe
 
       <div
         title={name}
-        className="ml-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0E1318] text-[10px] font-extrabold text-white"
+        className="ml-0.5 hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0E1318] text-[10px] font-extrabold text-white sm:flex"
       >
         {initials(optimizedData?.datosPersonales?.nombre)}
       </div>

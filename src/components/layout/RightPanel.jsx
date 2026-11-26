@@ -28,7 +28,7 @@ export default function RightPanel({ open, onClose, onOpenPanel }) {
     : 0;
 
   return (
-    <aside className="hidden w-[320px] shrink-0 flex-col border-l border-[#E9EAEE] bg-white lg:flex">
+    <aside className="hidden w-[320px] shrink-0 flex-col border-l border-[#E9EAEE] bg-white xl:flex">
       <header className="flex items-center justify-between border-b border-[#F0F1F3] px-3.5 py-2.5">
         <div className="flex items-center gap-1.5">
           <Info size={14} className="text-[#7D2AE8]" />
