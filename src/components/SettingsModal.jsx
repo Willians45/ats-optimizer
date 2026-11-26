@@ -1,101 +1,300 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Key, X, Save } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  RefreshCw,
+  Save,
+  Server,
+  ShieldCheck,
+  Trash2,
+} from 'lucide-react';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
+import Select from './ui/Select';
+import { useToast } from './ui/Toast';
+import { getApiStatus, testApiKey } from '../services/gemini';
+import {
+  clearUserApiKey,
+  getPreferredModel,
+  getUserApiKey,
+  maskApiKey,
+  setPreferredModel,
+  setUserApiKey,
+} from '../utils/storage';
+import { ALLOWED_MODELS, DEFAULT_MODEL, MODEL_LABELS } from '../../shared/cvSchema.js';
+import { cn } from '../utils/cn';
 
 export default function SettingsModal({ isOpen, onClose }) {
+  const toast = useToast();
   const [apiKey, setApiKey] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [model, setModel] = useState(DEFAULT_MODEL);
+  const [status, setStatus] = useState({ loading: true, data: null, error: '' });
+  const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const storedKey = getUserApiKey();
+
+  const loadStatus = useCallback(async () => {
+    setStatus((prev) => ({ ...prev, loading: true, error: '' }));
+    try {
+      const data = await getApiStatus();
+      setStatus({ loading: false, data, error: '' });
+      setModel((current) => {
+        if (current) return current;
+        return getPreferredModel() || data?.defaultModel || DEFAULT_MODEL;
+      });
+    } catch (error) {
+      setStatus({
+        loading: false,
+        data: null,
+        error: error?.message || 'No se pudo consultar el proxy.',
+      });
+    }
+  }, []);
 
   useEffect(() => {
-    if (isOpen) {
-      const storedKey = localStorage.getItem('gemini_api_key');
-      if (storedKey) setApiKey(storedKey);
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+    setApiKey(getUserApiKey());
+    setModel(getPreferredModel() || DEFAULT_MODEL);
+    setResult(null);
+    setShowKey(false);
+    loadStatus();
+  }, [isOpen, loadStatus]);
 
-  const handleSave = () => {
-    if (apiKey.trim()) {
-      localStorage.setItem('gemini_api_key', apiKey.trim());
-      onClose();
-    } else {
-      alert("Por favor ingresa una API Key válida.");
+  const handleTest = async () => {
+    setTesting(true);
+    setResult(null);
+    try {
+      await testApiKey(apiKey.trim());
+      setResult({ type: 'success', message: 'Conexión correcta. Gemini respondió bien.' });
+      toast.success('La API key funciona correctamente.');
+    } catch (error) {
+      setResult({ type: 'error', message: error?.message || 'La conexión falló.' });
+      toast.error(error?.message || 'La conexión falló.');
+    } finally {
+      setTesting(false);
     }
   };
 
+  const handleSave = () => {
+    const clean = apiKey.trim();
+    setSaving(true);
+    if (clean) {
+      const saved = setUserApiKey(clean);
+      if (!saved) {
+        setSaving(false);
+        toast.error('No se pudo guardar la key en este navegador.');
+        return;
+      }
+    }
+    setPreferredModel(model);
+    setSaving(false);
+    toast.success(
+      clean
+        ? 'Ajustes guardados. La key solo vive en este navegador.'
+        : 'Preferencias guardadas.',
+    );
+    loadStatus();
+    onClose?.();
+  };
+
+  const handleDelete = () => {
+    clearUserApiKey();
+    setApiKey('');
+    setResult(null);
+    toast.info('API key propia eliminada de este navegador.');
+    loadStatus();
+  };
+
+  const serverReady = Boolean(status.data?.configured);
+  const usingByok = Boolean(storedKey);
+  const ready = serverReady || usingByok;
+  const models = status.data?.allowedModels?.length ? status.data.allowedModels : ALLOWED_MODELS;
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/80"
-            onClick={onClose}
-          />
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            style={{ backgroundColor: '#1e293b' }}
-            className="relative w-full max-w-md border border-slate-500 rounded-lg shadow-2xl overflow-hidden font-mono"
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title="Ajustes"
+      description="Configura la conexión con Gemini. Tu key nunca se incluye en el bundle público."
+      size="lg"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cerrar
+          </Button>
+          <Button variant="secondary" onClick={handleTest} disabled={testing}>
+            {testing ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            {testing ? 'Probando…' : 'Probar conexión'}
+          </Button>
+          <Button variant="gradient" onClick={handleSave} disabled={saving}>
+            <Save size={15} /> Guardar
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-5">
+        <div
+          className={cn(
+            'flex items-start gap-3 rounded-xl border p-3',
+            ready ? 'border-[#BBF7D0] bg-[#F0FDF4]' : 'border-[#FECACA] bg-[#FEF2F2]',
+          )}
+        >
+          <span
+            className={cn(
+              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+              ready ? 'bg-[#DCFCE7] text-[#15803D]' : 'bg-[#FEE2E2] text-[#B91C1C]',
+            )}
           >
-            <div 
-              style={{ backgroundColor: '#334155' }}
-              className="flex items-center justify-between p-4 border-b border-slate-600"
+            <Server size={16} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p
+              className={cn(
+                'text-[12px] font-bold',
+                ready ? 'text-[#166534]' : 'text-[#991B1B]',
+              )}
             >
-              <div className="flex items-center gap-2 text-white">
-                <Key className="w-5 h-5 text-blue-400" />
-                <h3 className="font-semibold text-lg tracking-tight">System_Config</h3>
-              </div>
-              <button 
-                onClick={onClose}
-                className="text-slate-300 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-sm text-slate-400 mb-6 leading-relaxed">
-                &gt; Autenticación requerida para pipeline Gemini 1.5 Flash.
-                <br/>
-                &gt; Datos almacenados localmente en localStorage.
+              {status.loading
+                ? 'Comprobando el servidor…'
+                : serverReady
+                  ? 'Servidor configurado'
+                  : usingByok
+                    ? 'Usando tu API key (BYOK)'
+                    : 'Sin API key configurada'}
+            </p>
+            <p
+              className={cn(
+                'mt-0.5 text-[11px] leading-relaxed',
+                ready ? 'text-[#15803D]' : 'text-[#B91C1C]',
+              )}
+            >
+              {status.loading
+                ? 'Consultando /api/gemini.'
+                : serverReady
+                  ? `La variable GEMINI_API_KEY está definida en el servidor. Modelo: ${
+                      status.data?.defaultModel || DEFAULT_MODEL
+                    }.`
+                  : usingByok
+                    ? `Key guardada en este navegador: ${maskApiKey(storedKey)}.`
+                    : 'Añade GEMINI_API_KEY en Vercel o pega tu key abajo (se guarda solo en este navegador).'}
+            </p>
+            {status.error ? (
+              <p className="mt-1 flex items-center gap-1 text-[10.5px] text-[#B45309]">
+                <AlertCircle size={11} /> {status.error}
               </p>
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <label htmlFor="apiKey" className="text-[13px] font-bold text-slate-300 tracking-wider">
-                    GEMINI_API_KEY
-                  </label>
-                  <input
-                    id="apiKey"
-                    type="password"
-                    placeholder="AIzaSy..."
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="w-full bg-black border border-slate-700 px-4 py-3 rounded text-green-400 focus:outline-none focus:border-blue-500 font-mono text-sm placeholder-slate-700 shadow-inner"
-                  />
-                </div>
-                <button
-                  onClick={handleSave}
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded transition-colors border border-blue-500 text-sm tracking-wide uppercase shadow"
-                >
-                  <Save className="w-4 h-4" />
-                  [ GUARDAR EN DISCO ]
-                </button>
-              </div>
-              <div className="mt-6 text-center">
-                <a 
-                  href="https://aistudio.google.com/app/apikey" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xs text-slate-500 hover:text-blue-400 transition-colors uppercase tracking-widest"
-                >
-                  &#8594; Obtener Token en Google AI Studio
-                </a>
-              </div>
-            </div>
-          </motion.div>
+            ) : null}
+          </div>
         </div>
-      )}
-    </AnimatePresence>
+
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label htmlFor="gemini-key" className="flex items-center gap-1.5 text-[11px] font-bold text-[#374151]">
+              <KeyRound size={13} className="text-[#7D2AE8]" /> Tu API key de Gemini
+            </label>
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#6B21D6] hover:text-[#7D2AE8]"
+            >
+              Obtener key <ExternalLink size={10} />
+            </a>
+          </div>
+          <div className="relative">
+            <input
+              id="gemini-key"
+              type={showKey ? 'text' : 'password'}
+              value={apiKey}
+              onChange={(event) => setApiKey(event.target.value)}
+              placeholder="AIzaSy…"
+              autoComplete="off"
+              spellCheck={false}
+              className="h-10 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 pr-20 font-mono text-[12px] text-[#0E1318] shadow-[0_1px_2px_rgba(14,19,24,0.03)] outline-none transition placeholder:text-[#9CA3AF] focus:border-[#7D2AE8] focus:ring-4 focus:ring-[#7D2AE8]/10"
+            />
+            <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => setShowKey((value) => !value)}
+                className="rounded-md p-1.5 text-[#6B7280] transition hover:bg-[#F3F4F6] hover:text-[#0E1318]"
+                aria-label={showKey ? 'Ocultar key' : 'Mostrar key'}
+              >
+                {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+              {storedKey ? (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="rounded-md p-1.5 text-[#B91C1C] transition hover:bg-[#FEF2F2]"
+                  aria-label="Eliminar key guardada"
+                  title="Eliminar key guardada"
+                >
+                  <Trash2 size={14} />
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <p className="mt-1 text-[10.5px] leading-relaxed text-[#9CA3AF]">
+            Se guarda en <code className="font-mono">localStorage</code> de este navegador y se
+            envía únicamente a tu proxy <code className="font-mono">/api/gemini</code>.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="gemini-model" className="mb-1.5 block text-[11px] font-bold text-[#374151]">
+            Modelo preferido
+          </label>
+          <Select
+            id="gemini-model"
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+          >
+            {models.map((id) => (
+              <option key={id} value={id}>
+                {MODEL_LABELS[id] || id}
+              </option>
+            ))}
+          </Select>
+          <p className="mt-1 text-[10.5px] leading-relaxed text-[#9CA3AF]">
+            El modelo se guarda en este navegador. El servidor valida que esté permitido.
+          </p>
+        </div>
+
+        {result ? (
+          <div
+            className={cn(
+              'flex items-start gap-2 rounded-xl border px-3 py-2 text-[11px] leading-relaxed',
+              result.type === 'success'
+                ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]'
+                : 'border-[#FECACA] bg-[#FEF2F2] text-[#991B1B]',
+            )}
+          >
+            {result.type === 'success' ? (
+              <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+            ) : (
+              <AlertCircle size={14} className="mt-0.5 shrink-0" />
+            )}
+            {result.message}
+          </div>
+        ) : null}
+
+        <div className="flex items-start gap-2 rounded-xl bg-[#F8FAFC] px-3 py-2.5">
+          <ShieldCheck size={15} className="mt-0.5 shrink-0 text-[#0F766E]" />
+          <p className="text-[10.5px] leading-relaxed text-[#475569]">
+            <strong className="text-[#0F172A]">Producción:</strong> define{' '}
+            <code className="font-mono">GEMINI_API_KEY</code> en Vercel (nunca con prefijo{' '}
+            <code className="font-mono">VITE_</code>). La clave del servidor no se expone al
+            navegador y el proxy aplica rate limit por IP.
+          </p>
+        </div>
+      </div>
+    </Modal>
   );
 }
