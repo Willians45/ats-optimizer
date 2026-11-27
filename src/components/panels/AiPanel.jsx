@@ -185,7 +185,7 @@ export default function AiPanel() {
         </div>
       ) : null}
 
-      <Button variant="gradient" size="lg" className="w-full" onClick={generate} disabled={loading}>
+      <Button variant="gradient" size="lg" className="w-full" onClick={() => generate()} disabled={loading}>
         {loading ? <Loader2 size={17} className="animate-spin" /> : <Wand2 size={17} />}
         {loading ? 'Generando…' : 'Regenerar CV con IA'}
       </Button>

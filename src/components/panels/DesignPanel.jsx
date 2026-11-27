@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
@@ -6,13 +7,20 @@ import {
   EyeOff,
   Languages,
   LayoutTemplate,
+  Loader2,
   Palette,
   Rows3,
+  Trash2,
+  Wand2,
 } from 'lucide-react';
+import Button from '../ui/Button';
+import Modal from '../ui/Modal';
+import { useToast } from '../ui/Toast';
 import { useCvContext } from '../../context/CvContext';
 import { useCvMutations } from '../../hooks/useCvMutations';
+import { useGenerateCv } from '../../hooks/useGenerateCv';
 import { ACCENTS, TEMPLATES, getAccent } from '../../theme/templates';
-import { SECTION_LABELS, SECTION_ORDER } from '../../utils/cvData';
+import { flattenCv, SECTION_LABELS, SECTION_ORDER } from '../../utils/cvData';
 import { cn } from '../../utils/cn';
 
 function TemplatePreview({ template, accent, selected }) {
@@ -59,12 +67,36 @@ export default function DesignPanel() {
     optimizedData,
   } = useCvContext();
   const m = useCvMutations();
+  const { generate, loading: translating, error: translateError } = useGenerateCv();
+  const toast = useToast();
+  const [pendingDelete, setPendingDelete] = useState(null);
   const labels = SECTION_LABELS[language] || SECTION_LABELS.es;
   const order = optimizedData?.meta?.ordenSecciones?.length
     ? optimizedData.meta.ordenSecciones
     : SECTION_ORDER;
   const visibility = optimizedData?.meta?.secciones || {};
   const disabled = !optimizedData;
+
+  const handleTranslate = async () => {
+    if (!optimizedData) return;
+    const target = language === 'en' ? 'inglés' : 'español';
+    await generate({
+      cvText: flattenCv(optimizedData, { includeHidden: true }),
+      context: { language },
+      skipRoleCheck: true,
+      translateOnly: true,
+      baseData: optimizedData,
+      successMessage: `CV traducido al ${target}. Revisa la traducción sobre el lienzo.`,
+    });
+  };
+
+  const confirmDelete = () => {
+    if (!pendingDelete) return;
+    const section = pendingDelete;
+    m.removeSection(section);
+    setPendingDelete(null);
+    toast.info(`Sección "${labels[section]}" eliminada. Puedes deshacer con Ctrl+Z.`);
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -147,8 +179,29 @@ export default function DesignPanel() {
           ))}
         </div>
         <p className="mt-1.5 text-[10px] leading-relaxed text-[#9CA3AF]">
-          Cambia las etiquetas del documento. La IA traducirá el contenido si generas de nuevo.
+          Cambia las etiquetas del documento al instante. Para traducir y reescribir todo el
+          contenido con IA, regenera el CV en el idioma elegido.
         </p>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-2 w-full"
+          onClick={handleTranslate}
+          disabled={disabled || translating}
+        >
+          {translating ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+          {translating
+            ? 'Regenerando…'
+            : `Regenerar CV en ${language === 'en' ? 'inglés' : 'español'}`}
+        </Button>
+        <p className="mt-1 text-[10px] leading-relaxed text-[#9CA3AF]">
+          Se reemplazará el CV actual con la versión traducida. Puedes deshacer con Ctrl+Z.
+        </p>
+        {translateError ? (
+          <p className="mt-1.5 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-2.5 py-2 text-[10.5px] leading-relaxed text-[#B91C1C]">
+            {translateError}
+          </p>
+        ) : null}
       </section>
 
       <section>
@@ -159,7 +212,7 @@ export default function DesignPanel() {
               Secciones
             </h3>
           </div>
-          <span className="text-[10px] text-[#9CA3AF]">Orden y visibilidad</span>
+          <span className="text-[10px] text-[#9CA3AF]">Orden, visibilidad y borrado</span>
         </div>
 
         {disabled ? (
@@ -214,12 +267,44 @@ export default function DesignPanel() {
                   >
                     <ArrowDown size={12} />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingDelete(key)}
+                    className="rounded-md p-1 text-[#B91C1C] transition hover:bg-[#FEF2F2]"
+                    aria-label={`Eliminar ${labels[key]}`}
+                    title={`Eliminar ${labels[key]}`}
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </li>
               );
             })}
           </ul>
         )}
       </section>
+
+      <Modal
+        open={Boolean(pendingDelete)}
+        onClose={() => setPendingDelete(null)}
+        title={`Eliminar ${pendingDelete ? labels[pendingDelete] : 'sección'}`}
+        description="Se borrarán todos los datos de esta sección y quedará oculta en el CV."
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPendingDelete(null)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmDelete}>
+              <Trash2 size={15} /> Eliminar sección
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[12px] leading-relaxed text-[#4B5563]">
+          Esta acción vacía el contenido de la sección. Podrás recuperarla con Ctrl+Z o volver a
+          mostrarla desde esta misma lista, aunque empezará vacía.
+        </p>
+      </Modal>
     </div>
   );
 }

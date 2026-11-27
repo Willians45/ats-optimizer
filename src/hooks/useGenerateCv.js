@@ -23,49 +23,80 @@ export function useGenerateCv() {
   const [error, setError] = useState('');
   const [errorCode, setErrorCode] = useState('');
 
-  const generate = useCallback(async () => {
-    if (!cvText || cvText.trim().length < 30) {
-      toast.error('Sube o pega tu CV actual antes de generar.');
-      return false;
-    }
+  const generate = useCallback(
+    async (options = {}) => {
+      const sourceText = String(options.cvText ?? cvText ?? '');
+      const requestContext = { ...context, ...(options.context || {}) };
+      if (options.translateOnly) requestContext.translateOnly = true;
+      const sourceJobDescription = options.jobDescription ?? jobDescription;
+      const sourceJobImage = options.jobImage ?? jobImage;
 
-    if (!context.targetRole?.trim()) {
-      toast.error('Indica el cargo objetivo (ej. Recepcionista) para que la IA adapte el CV.');
-      return false;
-    }
+      if (sourceText.trim().length < 30) {
+        toast.error('Sube o pega tu CV actual antes de generar.');
+        return false;
+      }
 
-    setLoading(true);
-    setError('');
-    setErrorCode('');
+      if (!options.skipRoleCheck && !requestContext.targetRole?.trim()) {
+        toast.error('Indica el cargo objetivo (ej. Recepcionista) para que la IA adapte el CV.');
+        return false;
+      }
 
-    try {
-      const result = await generateCv({
-        cvText,
-        jobDescription,
-        jobImage,
-        context,
-        model: getPreferredModel(),
-      });
+      setLoading(true);
+      setError('');
+      setErrorCode('');
 
-      const normalized = normalizeCvData(result?.data, {
-        targetRole: context.targetRole,
-        language: context.language,
-      });
+      try {
+        const result = await generateCv({
+          cvText: sourceText,
+          jobDescription: sourceJobDescription,
+          jobImage: sourceJobImage,
+          context: requestContext,
+          model: options.model || getPreferredModel(),
+        });
 
-      setOptimizedData(normalized);
-      toast.success('CV optimizado. Ahora puedes editarlo directamente en el lienzo.');
-      return true;
-    } catch (err) {
-      const message =
-        err?.message || 'No se pudo generar el CV. Revisa tu conexión e inténtalo de nuevo.';
-      setError(message);
-      setErrorCode(err?.code || '');
-      toast.error(message);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [cvText, jobDescription, jobImage, context, setOptimizedData, toast]);
+        const normalized = normalizeCvData(result?.data, {
+          targetRole: requestContext.targetRole,
+          language: requestContext.language,
+        });
+
+        const base = options.baseData;
+        const next = base
+          ? {
+              ...normalized,
+              meta: {
+                ...normalized.meta,
+                cargoObjetivo:
+                  normalized.meta.cargoObjetivo || base.meta?.cargoObjetivo || '',
+                ordenSecciones: base.meta?.ordenSecciones?.length
+                  ? base.meta.ordenSecciones
+                  : normalized.meta.ordenSecciones,
+                secciones: {
+                  ...normalized.meta.secciones,
+                  ...(base.meta?.secciones || {}),
+                },
+              },
+            }
+          : normalized;
+
+        setOptimizedData(next);
+        toast.success(
+          options.successMessage ||
+            'CV optimizado. Ahora puedes editarlo directamente en el lienzo.',
+        );
+        return true;
+      } catch (err) {
+        const message =
+          err?.message || 'No se pudo generar el CV. Revisa tu conexión e inténtalo de nuevo.';
+        setError(message);
+        setErrorCode(err?.code || '');
+        toast.error(message);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [cvText, jobDescription, jobImage, context, setOptimizedData, toast],
+  );
 
   return { generate, loading, error, errorCode };
 }

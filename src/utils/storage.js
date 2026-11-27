@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
   apiKey: 'ats.gemini.key',
   legacyApiKey: 'gemini_api_key',
   model: 'ats.gemini.model',
+  clearWarning: 'ats.clearWarning.v1',
 };
 
 export const STORAGE_EVENTS = {
@@ -90,6 +91,33 @@ export function savePersistedState({ data, context, ui, draft }) {
 export function clearPersistedData() {
   try {
     localStorage.removeItem(STORAGE_KEYS.data);
+  } catch {
+    // noop
+  }
+}
+
+export function clearWorkspaceStorage() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.data);
+    localStorage.removeItem(STORAGE_KEYS.draft);
+    localStorage.removeItem(STORAGE_KEYS.context);
+  } catch {
+    // noop
+  }
+}
+
+export function isClearWarningDismissed() {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.clearWarning) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setClearWarningDismissed(dismissed) {
+  try {
+    if (dismissed) localStorage.setItem(STORAGE_KEYS.clearWarning, '1');
+    else localStorage.removeItem(STORAGE_KEYS.clearWarning);
   } catch {
     // noop
   }

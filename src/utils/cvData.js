@@ -317,11 +317,11 @@ export function normalizeCvData(raw, { targetRole = '', language = 'es' } = {}) 
   };
 }
 
-export function flattenCv(data) {
+export function flattenCv(data, { includeHidden = false } = {}) {
   if (!data) return '';
   const personal = data.datosPersonales || {};
   const visible = data?.meta?.secciones || {};
-  const isVisible = (key) => visible[key] !== false;
+  const isVisible = (key) => includeHidden || visible[key] !== false;
   const parts = [
     personal.nombre,
     personal.headline,

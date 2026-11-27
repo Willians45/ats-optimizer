@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   AlertTriangle,
+  FilePlus2,
   FileText,
   Image as ImageIcon,
   Loader2,
@@ -16,6 +17,7 @@ import { useCvContext } from '../../context/CvContext';
 import { useApiStatus } from '../../hooks/useApiStatus';
 import { useGenerateCv } from '../../hooks/useGenerateCv';
 import { useToast } from '../ui/Toast';
+import { createEmptyCv } from '../../utils/cvData';
 
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -43,7 +45,7 @@ function SectionTitle({ icon: Icon, title, hint, action }) {
   );
 }
 
-export default function ContentPanel({ onOpenSettings, onOpenPanel }) {
+export default function ContentPanel({ onOpenSettings, onOpenPanel, onClosePanel }) {
   const {
     cvText,
     setCvText,
@@ -52,6 +54,7 @@ export default function ContentPanel({ onOpenSettings, onOpenPanel }) {
     jobImage,
     setJobImage,
     optimizedData,
+    setOptimizedData,
   } = useCvContext();
   const { generate, loading, error } = useGenerateCv();
   const api = useApiStatus();
@@ -109,9 +112,40 @@ export default function ContentPanel({ onOpenSettings, onOpenPanel }) {
 
   const needsKey = !api.loading && !api.configured && !api.hasUserKey;
 
+  const startBlankCv = () => {
+    setOptimizedData(createEmptyCv());
+    toast.success('CV en blanco creado. Rellena tus datos directamente sobre la hoja.');
+    onClosePanel?.();
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <TargetRoleCard />
+
+      {!optimizedData ? (
+        <section className="rounded-xl border border-dashed border-[#DCCBF7] bg-gradient-to-br from-[#FBF7FF] to-white p-3">
+          <div className="flex items-start gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F4ECFF] text-[#6B21D6]">
+              <FilePlus2 size={16} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-bold text-[#0E1318]">Crear CV desde cero</p>
+              <p className="mt-0.5 text-[10.5px] leading-relaxed text-[#6B7280]">
+                ¿No tienes un PDF a mano? Empieza con una hoja en blanco y escribe tus datos,
+                cargos y estudios directamente en el lienzo.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-2"
+                onClick={startBlankCv}
+              >
+                <FilePlus2 size={14} /> Empezar en blanco
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {needsKey ? (
         <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] p-3">
@@ -245,7 +279,7 @@ export default function ContentPanel({ onOpenSettings, onOpenPanel }) {
           variant="gradient"
           size="lg"
           className="w-full"
-          onClick={generate}
+          onClick={() => generate()}
           disabled={loading || !cvText.trim()}
         >
           {loading ? <Loader2 size={17} className="animate-spin" /> : <Wand2 size={17} />}

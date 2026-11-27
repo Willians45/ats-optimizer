@@ -10,7 +10,12 @@ import {
   useState,
 } from 'react';
 import { createEmptyCv } from '../utils/cvData';
-import { loadPersistedState, savePersistedState } from '../utils/storage';
+import {
+  DEFAULT_CONTEXT,
+  clearWorkspaceStorage,
+  loadPersistedState,
+  savePersistedState,
+} from '../utils/storage';
 
 const CvContext = createContext(null);
 
@@ -141,6 +146,19 @@ export function CvProvider({ children }) {
     dispatch({ type: 'RESET', payload: createEmptyCv() });
   }, []);
 
+  /**
+   * Borra por completo el trabajo actual: CV, textos de origen, oferta y
+   * contexto. El diseño (plantilla/color) se conserva.
+   */
+  const clearWorkspace = useCallback(() => {
+    clearWorkspaceStorage();
+    dispatch({ type: 'RESET', payload: null });
+    setCvText('');
+    setJobDescription('');
+    setJobImage(null);
+    setContextState({ ...DEFAULT_CONTEXT });
+  }, []);
+
   const value = useMemo(
     () => ({
       cvText,
@@ -163,6 +181,7 @@ export function CvProvider({ children }) {
       canRedo: state.future.length > 0,
       resetCv,
       clearCv,
+      clearWorkspace,
       template,
       setTemplate,
       accent,
@@ -186,6 +205,7 @@ export function CvProvider({ children }) {
       redo,
       resetCv,
       clearCv,
+      clearWorkspace,
       template,
       accent,
       saveStatus,

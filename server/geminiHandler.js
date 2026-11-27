@@ -8,6 +8,12 @@ import {
 } from '../shared/cvSchema.js';
 import { buildCvPrompt } from './prompts/cvOptimizer.js';
 import { normalizeServerCv } from './cvNormalize.js';
+import {
+  buildJobSearchPrompt,
+  buildJobSearchSystemInstruction,
+  extractGroundingSources,
+  normalizeJobResults,
+} from './jobSearch.js';
 
 const MAX_CV_CHARS = 40_000;
 const MAX_JOB_CHARS = 25_000;
@@ -30,6 +36,7 @@ const ContextSchema = z
     maxPages: z.coerce.number().min(1).max(3).optional().default(2),
     focus: z.string().max(100).optional().default('ATS'),
     customInstructions: z.string().max(4000).optional().default(''),
+    translateOnly: z.boolean().optional().default(false),
   })
   .partial()
   .default({});
@@ -54,6 +61,18 @@ const TestSchema = z.object({
   action: z.literal('test'),
   userKey: z.string().max(300).optional().nullable(),
   model: z.string().max(80).optional(),
+});
+
+const JobsSchema = z.object({
+  action: z.literal('jobs'),
+  targetRole: z.string().max(200).optional().default(''),
+  headline: z.string().max(300).optional().default(''),
+  keywords: z.array(z.string().max(120)).max(30).optional().default([]),
+  location: z.string().max(200).optional().default(''),
+  summary: z.string().max(4000).optional().default(''),
+  language: z.enum(['es', 'en']).optional().default('es'),
+  model: z.string().max(80).optional(),
+  userKey: z.string().max(300).optional().nullable(),
 });
 
 function json(status, body) {
@@ -155,6 +174,22 @@ function mapError(error, { model = '' } = {}) {
         error: {
           code: 'INVALID_API_KEY',
           message: 'La API key de Gemini no es válida o caducó. Revísala en Ajustes.',
+          detail: raw,
+        },
+      },
+    };
+  }
+  if (
+    /(google.?search|search grounding|search tool|grounding)/i.test(raw) &&
+    /(not supported|not available|not enabled|permission|unsupported|not allowed|invalid)/i.test(raw)
+  ) {
+    return {
+      status: 400,
+      body: {
+        error: {
+          code: 'SEARCH_UNAVAILABLE',
+          message:
+            'La búsqueda web no está disponible con el modelo o la API key actual. Prueba con otro modelo en Ajustes o revisa tu configuración de Gemini.',
           detail: raw,
         },
       },
@@ -327,7 +362,8 @@ export async function handleGeminiRequest({
   }
 
   const payload = parseBody(body);
-  const action = payload?.action === 'test' ? 'test' : 'generate';
+  const action =
+    payload?.action === 'test' ? 'test' : payload?.action === 'jobs' ? 'jobs' : 'generate';
 
   if (action === 'test') {
     const parsed = TestSchema.safeParse(payload);
@@ -357,6 +393,68 @@ export async function handleGeminiRequest({
       return json(200, { ok: true, model: testedModel });
     } catch (error) {
       return mapError(error, { model: testedModel });
+    }
+  }
+
+  if (action === 'jobs') {
+    const parsed = JobsSchema.safeParse(payload);
+    if (!parsed.success) {
+      return json(400, {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'La búsqueda de empleo no es válida.',
+          detail: parsed.error.issues.map((issue) => issue.message).join(' '),
+        },
+      });
+    }
+
+    const { key } = resolveKey(parsed.data.userKey);
+    if (!key) {
+      return json(400, {
+        error: {
+          code: 'NO_API_KEY',
+          message: 'Sin API KEY configurada.',
+        },
+      });
+    }
+
+    const jobsModel = resolveModel(parsed.data.model);
+    const promptText = buildJobSearchPrompt(parsed.data);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: key });
+      const response = await ai.models.generateContent({
+        model: jobsModel,
+        contents: [{ role: 'user', parts: [{ text: promptText }] }],
+        config: {
+          systemInstruction: buildJobSearchSystemInstruction(),
+          tools: [{ googleSearch: {} }],
+          temperature: 0.2,
+          maxOutputTokens: 2048,
+        },
+      });
+
+      const rawData = parseJsonResponse(response.text);
+      const jobs = normalizeJobResults(rawData);
+      const grounding = response.candidates?.[0]?.groundingMetadata || null;
+
+      return json(200, {
+        jobs,
+        sources: extractGroundingSources(grounding),
+        queries: grounding?.webSearchQueries || [],
+        model: jobsModel,
+        experimental: true,
+      });
+    } catch (error) {
+      const mapped = mapError(error, { model: jobsModel });
+      if (
+        mapped.body?.error?.code === 'GEMINI_ERROR' ||
+        mapped.body?.error?.code === 'TIMEOUT'
+      ) {
+        mapped.body.error.message =
+          'No se pudo completar la búsqueda de empleo. Inténtalo de nuevo en unos segundos.';
+      }
+      return mapped;
     }
   }
 
@@ -398,6 +496,7 @@ export async function handleGeminiRequest({
     focus: context.focus || 'ATS',
     customInstructions: context.customInstructions || '',
     hasJobImage: Boolean(parsed.data.jobImage?.data),
+    translateOnly: context.translateOnly === true,
   });
 
   const parts = [{ text: promptText }];

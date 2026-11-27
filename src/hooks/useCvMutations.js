@@ -198,6 +198,32 @@ export function useCvMutations() {
     [patchData],
   );
 
+  const removeSection = useCallback(
+    (section) => {
+      patchData((prev) => {
+        const next = { ...prev };
+        if (section === 'perfilProfesional') {
+          next.perfilProfesional = '';
+        } else if (section === 'habilidades') {
+          next.habilidades = { tecnicas: [], blandas: [] };
+        } else if (Array.isArray(next[section])) {
+          next[section] = [];
+        }
+        return {
+          ...next,
+          meta: {
+            ...prev.meta,
+            secciones: {
+              ...prev.meta?.secciones,
+              [section]: false,
+            },
+          },
+        };
+      });
+    },
+    [patchData],
+  );
+
   return {
     data: optimizedData,
     patchData,
@@ -215,5 +241,6 @@ export function useCvMutations() {
     updateMeta,
     moveSection,
     toggleSection,
+    removeSection,
   };
 }

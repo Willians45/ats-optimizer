@@ -1,14 +1,22 @@
 import {
   AlertTriangle,
+  Briefcase,
   CheckCircle2,
+  ExternalLink,
+  FlaskConical,
   Gauge,
   Lightbulb,
+  Loader2,
+  Search,
   Sparkles,
   Target,
   XCircle,
 } from 'lucide-react';
+import Button from '../ui/Button';
 import ScoreRing from '../ui/ScoreRing';
+import { useApiStatus } from '../../hooks/useApiStatus';
 import { useAtsAnalysis } from '../../hooks/useAtsAnalysis';
+import { useJobSearch } from '../../hooks/useJobSearch';
 import { useCvContext } from '../../context/CvContext';
 import { cn } from '../../utils/cn';
 
@@ -34,9 +42,48 @@ function Stat({ value, label }) {
   );
 }
 
-export default function AtsPanel() {
+function JobCard({ job }) {
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11.5px] font-bold leading-snug text-[#0E1318]">{job.titulo}</p>
+        {job.url ? <ExternalLink size={12} className="mt-0.5 shrink-0 text-[#9CA3AF]" /> : null}
+      </div>
+      {job.empresa || job.ubicacion ? (
+        <p className="mt-0.5 text-[10.5px] text-[#6B7280]">
+          {[job.empresa, job.ubicacion].filter(Boolean).join(' · ')}
+        </p>
+      ) : null}
+      {job.motivo ? (
+        <p className="mt-1 text-[10.5px] leading-relaxed text-[#4B5563]">{job.motivo}</p>
+      ) : null}
+      {job.fuente ? (
+        <span className="mt-1.5 inline-flex rounded-full bg-[#F3F4F6] px-2 py-0.5 text-[9.5px] font-semibold text-[#6B7280]">
+          {job.fuente}
+        </span>
+      ) : null}
+    </>
+  );
+
+  const className =
+    'block rounded-xl border border-[#E9EAEE] bg-white px-2.5 py-2 transition hover:border-[#B79BF0] hover:bg-[#FCFAFF]';
+
+  if (job.url) {
+    return (
+      <a href={job.url} target="_blank" rel="noopener noreferrer" className={className}>
+        {content}
+      </a>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
+}
+
+export default function AtsPanel({ onOpenSettings }) {
   const { optimizedData, context } = useCvContext();
   const analysis = useAtsAnalysis();
+  const api = useApiStatus();
+  const { search, loading: searching, error: searchError, result: jobResult } = useJobSearch();
 
   if (!optimizedData) {
     return (
@@ -55,6 +102,7 @@ export default function AtsPanel() {
   const { score, checks, found, missing, coverage, suggestions, stats } = analysis;
   const foundShown = found.slice(0, 10);
   const missingShown = missing.slice(0, 10);
+  const canSearch = !api.loading && (api.configured || api.hasUserKey);
 
   return (
     <div className="flex flex-col gap-5">
@@ -156,6 +204,98 @@ export default function AtsPanel() {
             ) : null}
           </div>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-[#E9EAEE] bg-white p-3.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <Briefcase size={13} className="text-[#7D2AE8]" />
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.13em] text-[#374151]">
+              Buscar ofertas
+            </h3>
+          </div>
+          <span className="rounded-full bg-[#F4ECFF] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-[#6B21D6]">
+            Experimental
+          </span>
+        </div>
+        <p className="mt-1 text-[10.5px] leading-relaxed text-[#6B7280]">
+          Busca en Google ofertas de empleo reales que encajen con tu CV y tus keywords.
+        </p>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-2 w-full"
+          onClick={() => search(analysis.keywords)}
+          disabled={searching || !canSearch}
+        >
+          {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+          {searching ? 'Buscando ofertas…' : 'Buscar trabajos para mi CV'}
+        </Button>
+
+        {!canSearch && !api.loading ? (
+          <p className="mt-1.5 text-[10px] leading-relaxed text-[#A16207]">
+            Sin API KEY configurada.{' '}
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="font-bold underline underline-offset-2 hover:text-[#78350F]"
+            >
+              Abrir Ajustes
+            </button>
+          </p>
+        ) : null}
+
+        {searchError ? (
+          <p className="mt-2 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-2.5 py-2 text-[10.5px] leading-relaxed text-[#B91C1C]">
+            {searchError}
+          </p>
+        ) : null}
+
+        {jobResult ? (
+          jobResult.jobs.length ? (
+            <ul className="mt-2.5 flex flex-col gap-1.5">
+              {jobResult.jobs.map((job, index) => (
+                <li key={`${job.titulo}_${job.empresa}_${index}`}>
+                  <JobCard job={job} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 rounded-lg bg-[#FAFAFB] px-2.5 py-2 text-[10.5px] leading-relaxed text-[#6B7280]">
+              No encontramos ofertas para este perfil. Prueba a añadir keywords o a cambiar el
+              cargo objetivo.
+            </p>
+          )
+        ) : null}
+
+        {jobResult?.sources?.length ? (
+          <details className="mt-2 rounded-lg bg-[#FAFAFB] px-2.5 py-2">
+            <summary className="cursor-pointer text-[10px] font-semibold text-[#6B7280]">
+              Fuentes consultadas ({jobResult.sources.length})
+            </summary>
+            <ul className="mt-1.5 flex flex-col gap-1">
+              {jobResult.sources.slice(0, 8).map((source) => (
+                <li key={source.url}>
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block truncate text-[10px] text-[#6B21D6] hover:underline"
+                  >
+                    {source.title || source.url}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+
+        <p className="mt-2.5 flex items-start gap-1 text-[9.5px] leading-relaxed text-[#9CA3AF]">
+          <FlaskConical size={11} className="mt-0.5 shrink-0" />
+          Experimental: resultados de búsqueda web de Google. Pueden estar desactualizados o
+          caducados; verifica siempre la oferta en la fuente original.
+        </p>
       </section>
 
       <section>

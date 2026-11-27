@@ -92,3 +92,30 @@ export async function generateCv({
     }),
   });
 }
+
+export async function searchJobs({
+  targetRole = '',
+  headline = '',
+  keywords = [],
+  location = '',
+  summary = '',
+  language = 'es',
+  model = '',
+}) {
+  const userKey = getUserApiKey();
+  return request({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'jobs',
+      targetRole,
+      headline,
+      keywords,
+      location,
+      summary,
+      language,
+      model: model || undefined,
+      userKey: userKey || undefined,
+    }),
+  });
+}

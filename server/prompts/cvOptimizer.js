@@ -36,9 +36,30 @@ export function buildCvPrompt({
   focus,
   customInstructions,
   hasJobImage,
+  translateOnly = false,
 }) {
   const outputLanguage = LANGUAGE_LABEL[language] || LANGUAGE_LABEL.es;
   const toneLabel = TONE_LABEL[tone] || TONE_LABEL.professional;
+
+  if (translateOnly) {
+    return `
+Eres un traductor profesional especializado en CVs. Traduce el CV completo al **${outputLanguage}**.
+
+## REGLAS DE TRADUCCIÓN (MÁXIMA PRIORIDAD)
+1. Traduce TODO el contenido textual, incluido el titular y el perfil profesional, manteniendo el mismo significado.
+2. No añadas, elimines, resumas ni reescribas logros, responsabilidades, fechas, empresas, cargos, estudios ni datos personales.
+3. Conserva exactamente el nombre, email, teléfono, ubicación, LinkedIn y portafolio originales.
+4. Conserva las cifras y métricas tal y como aparecen.
+5. No adaptes el CV al cargo objetivo ni inventes información nueva: solo traduce.
+6. Mantén el tono profesional y un lenguaje natural en ${outputLanguage}.
+
+## CAMPOS DE SALIDA
+Devuelve exclusivamente el JSON del esquema, con la misma estructura del CV original. Rellena cada campo con su traducción. Si un campo está vacío en el original, déjalo vacío.
+
+## CV ORIGINAL
+${cvText}
+`.trim();
+  }
 
   return `
 Eres un/a "Senior Resume Writer" y especialista en ATS con más de 15 años de experiencia. Tu trabajo es reescribir el CV del candidato para maximizar su compatibilidad con sistemas ATS y su relevancia para el cargo objetivo, sin inventar información.

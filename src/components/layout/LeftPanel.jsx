@@ -68,7 +68,11 @@ export default function LeftPanel({ activePanel, onOpenSettings, onOpenPanel, op
           </IconButton>
         </header>
         <div className="canva-scroll flex-1 overflow-y-auto px-4 py-4">
-          <Component onOpenSettings={onOpenSettings} onOpenPanel={onOpenPanel} />
+          <Component
+            onOpenSettings={onOpenSettings}
+            onOpenPanel={onOpenPanel}
+            onClosePanel={onClose}
+          />
         </div>
       </aside>
     </>

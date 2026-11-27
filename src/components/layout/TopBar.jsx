@@ -1,5 +1,6 @@
 import { Check, CloudUpload, PanelRight, Redo2, Settings, Sparkles, Undo2 } from 'lucide-react';
 import IconButton from '../ui/IconButton';
+import ClearCvButton from './ClearCvButton';
 import DownloadButton from '../../pdf/DownloadButton';
 import { useCvContext } from '../../context/CvContext';
 import { useAtsAnalysis } from '../../hooks/useAtsAnalysis';
@@ -9,19 +10,6 @@ function scoreTone(score) {
   if (score >= 75) return 'bg-[#E9F9EF] text-[#15803D] border-[#BBF7D0]';
   if (score >= 50) return 'bg-[#FFF7E6] text-[#B45309] border-[#FDE68A]';
   return 'bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]';
-}
-
-function initials(name) {
-  const parts = String(name || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (!parts.length) return 'TÚ';
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase();
 }
 
 export default function TopBar({ onOpenSettings, rightOpen, onToggleRight, onOpenPanel }) {
@@ -63,13 +51,16 @@ export default function TopBar({ onOpenSettings, rightOpen, onToggleRight, onOpe
         <p className="truncate text-[10.5px] text-[#9CA3AF]">{headline}</p>
       </div>
 
-      <div className="hidden items-center gap-0.5 sm:flex">
-        <IconButton label="Deshacer (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
-          <Undo2 size={16} />
-        </IconButton>
-        <IconButton label="Rehacer (Ctrl+Shift+Z)" onClick={redo} disabled={!canRedo}>
-          <Redo2 size={16} />
-        </IconButton>
+      <div className="flex items-center gap-0.5">
+        <div className="hidden items-center gap-0.5 sm:flex">
+          <IconButton label="Deshacer (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
+            <Undo2 size={16} />
+          </IconButton>
+          <IconButton label="Rehacer (Ctrl+Shift+Z)" onClick={redo} disabled={!canRedo}>
+            <Redo2 size={16} />
+          </IconButton>
+        </div>
+        <ClearCvButton />
       </div>
 
       <div className="hidden items-center gap-1.5 rounded-full bg-[#F6F6F7] px-2.5 py-1 md:flex">
@@ -116,13 +107,6 @@ export default function TopBar({ onOpenSettings, rightOpen, onToggleRight, onOpe
       <IconButton label="Ajustes" onClick={onOpenSettings}>
         <Settings size={16} />
       </IconButton>
-
-      <div
-        title={name}
-        className="ml-0.5 hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0E1318] text-[10px] font-extrabold text-white sm:flex"
-      >
-        {initials(optimizedData?.datosPersonales?.nombre)}
-      </div>
     </header>
   );
 }
